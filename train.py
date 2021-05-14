@@ -10,7 +10,7 @@ from azureml.core.run import Run
 from azureml.data.dataset_factory import TabularDatasetFactory
 
 
-url="https://github.com/benbot8/azure_capstone/blob/f54d4da8ea6c2cd5c9082b6703271c25d5f16b40/starter_file/train.csv"
+url="https://raw.githubusercontent.com/benbot8/azure_capstone/f54d4da8ea6c2cd5c9082b6703271c25d5f16b40/starter_file/train.csv"
 
 df = TabularDatasetFactory.from_delimited_files(path=url)
 
