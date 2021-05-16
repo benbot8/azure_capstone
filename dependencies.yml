@@ -1,6 +1,6 @@
 dependencies:
    - python=3.8.5
    - scikit-learn
-   - xgboost
+   - py-xgboost
    - pip:
        - azureml-defaults
