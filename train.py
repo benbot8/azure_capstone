@@ -47,7 +47,7 @@ def main():
 
     run.log("Regularization Strength:", float(args.C))
     run.log("Max iterations:", int(args.max_iter))
-    run.log("Algorithm ", args.solver)
+    run.log("Algorithm:", args.solver)
 
 
     model = LogisticRegression(solver=args.solver, C=args.C, max_iter=args.max_iter).fit(x_train, y_train)
@@ -55,6 +55,7 @@ def main():
     AUC_weighted = roc_auc_score(y_test, model.predict_proba(x_test)[:, 1], average="weighted")
     run.log("AUC_weighted", float(AUC_weighted))
 
+    joblib.dump(model, "outputs/hd_model.joblib")
 
 
 if __name__ == '__main__':
