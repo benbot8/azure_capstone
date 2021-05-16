@@ -70,10 +70,15 @@ The following screenshot shows the configurations used:
 ### Results
 After submitting the experiment with the given config, Azure AutoML not only tries several algorithms on the dataset, but also applies data guardrails. One interesting finding was that the dataset is highly imbalanced which can lead to a falsely perceived positive effect of a model's accuracy because the input data has bias towards one class. It might make sense to fix this beforehand to further improve the model's accuracy in the future.
 After ca. 50 different models, the experiment timed out (can of course be prolonged to possibly get a better result) and the best model was built with a VotingEnsemble algorithm and an AUC_weighted of 92.5%. 
+
 ![](images/automl-1.png)
+
 The parameters from the best run were: 
+
 ![](images/automl-2.png)
+
 Other metrics for the best run: 
+
 ![](images/metrics.png)
 
 ## Hyperparameter Tuning
