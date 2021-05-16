@@ -7,6 +7,8 @@ In this project, I created two machine learning models: one using Azure Automate
 The following diagram depicts the tasks involved: 
 ![](images/capstone-diagram.png)
 
+The objective of this project is to predict whether a customer will change a telecommunications provider based on data about this customer. This binary classification task is also known as "churning" and is applicable to almost any domain. 
+After using the Azure AutoML functionality (with multiple models) and a custom model and optimized hyperparameters (using Azure HyperDrive), the best model predicts with an **AUC_weighted score of 92,542%** whether a given customer will churn or not based on the input data.  
 
 ## Dataset
 
@@ -41,21 +43,36 @@ The 19 input features and 1 target variable are:
 
 
 ### Access
-I uploaded the dataset into Azure ML and directly imported it from the workspace datasets. Another option was to use the [TabularDatasetFactory class](https://docs.microsoft.com/en-us/python/api/azureml-core/azureml.data.dataset_factory.tabulardatasetfactory?view=azure-ml-py#from-delimited-files-path--validate-true--include-path-false--infer-column-types-true--set-column-types-none--separator------header-true--partition-format-none--support-multi-line-false--empty-as-string-false--encoding--utf8--). 
-
+To use the dataset, I demonstrated 2 approaches: 
+1. For the Jupyter Notebooks, I uploaded the dataset into Azure ML using the AzureML Studio GUI and then directly imported it from the workspace datasets. 
+2. For the custom-coded python model script, I stored the file in an GitHub account and used the URL Link as a parameter for the [TabularDatasetFactory class](https://docs.microsoft.com/en-us/python/api/azureml-core/azureml.data.dataset_factory.tabulardatasetfactory?view=azure-ml-py#from-delimited-files-path--validate-true--include-path-false--infer-column-types-true--set-column-types-none--separator------header-true--partition-format-none--support-multi-line-false--empty-as-string-false--encoding--utf8--). 
 
 ## Automated ML
-The task in hand is a classification problem. I will give a few details about the AutoML Configuration: 
-The AutoML experiment will timeout after 20 minutes and uses a maximum of 5 concurrent iterations. It is, however, very possible to adjust those parameters (though a deep learning experiment has a limit of 24 hours). The primary metric is AUC_weighted (area under the curve weighted), which is the metric I want to optimize. The best-fit model will be chosen based on this metric. The binary classification predicts, whether a customer is going to leave the company or not (given in the lab column "churn"). Early stopping is enabled if the score is not improving in the short term.
+The task in hand is a classification problem. The following table gives a few details about the [AutoML Configuration](https://docs.microsoft.com/en-us/python/api/azureml-train-automl-client/azureml.train.automl.automlconfig.automlconfig?view=azure-ml-py) in use. 
+| Setting  | Description | Usage 
+| ------------- | ------------- | ------------- 
+| compute_target  | The Azure Machine Learning compute target to run the Automated Machine Learning experiment on   | The created dedicated CPU cluster called 'capstone-cluster'
+| task  | The type of task to run. Values can be 'classification', 'regression', or 'forecasting' depending on the type of automated ML problem to solve.  | it is a binary classification
+label_column_name | The name of the label column. | 'churn' was the label column
+path | The full path to the Azure Machine Learning project folder. If not specified, the default is to use the current directory or ".". | Previously created projekt folder path
+enable_early_stopping | Whether to enable early termination if the score is not improving in the short term. | Enabled
+featurization | 'auto' / 'off' / FeaturizationConfig Indicator for whether featurization step should be done automatically or not, or whether customized featurization should be used. Column type is automatically detected. Based on the detected column type preprocessing/featurization is done as follows: Categorical (e.g. OHE), Numeric (e.g. Impute missing values), DateTime, Text (e.g. Bag of Words). | Used 'auto'. Pretty cool feature btw!
+automl_settings |   Object of the AutoML experiemnt settings. | see below
+|  |  |  |
+
+
+As settings for the AutoML experiment, I added three attributes: MAXIMUM_EXPERIMENT_TIMEOUT_MINUTES, MAX_CONCURRENT_ITERATIONS and PRIMARY_METRIC. The AutoML experiment will timeout after 20 minutes and uses a maximum of 5 concurrent iterations (It is, however, very possible to adjust those parameters - though a deep learning experiment has a limit of 24 hours). 
+The primary metric parameter determines the metric to be used during model training for optimization. In this case, the model should predict whether a customer is going to leave the company or not (given in the lab column "churn") - a task type that is called "classification". Azure supports 5 different primary metrics for this task type: accuracy, AUC_weighted, average_precision_score_weighted, norm_macro_recall, precision_score_weighted. After exploring the dataset, I saw that it it small and has a large class skew (class imbalance). I realized I was on a good track, after reading the [Azure documentation](https://docs.microsoft.com/en-us/azure/machine-learning/how-to-configure-auto-train#primary-metric): "Post thresholded metrics, like accuracy, average_precision_score_weighted, norm_macro_recall, and precision_score_weighted may not optimize as well for datasets which are small, have very large class skew (class imbalance), or when the expected metric value is very close to 0.0 or 1.0. In those cases, AUC_weighted can be a better choice for the primary metric."
+
 The following screenshot shows the configurations used: 
 ![](images/automl_config.png)
 
 ### Results
 After submitting the experiment with the given config, Azure AutoML not only tries several algorithms on the dataset, but also applies data guardrails. One interesting finding was that the dataset is highly imbalanced which can lead to a falsely perceived positive effect of a model's accuracy because the input data has bias towards one class. It might make sense to fix this beforehand to further improve the model's accuracy in the future.
 After ca. 50 different models, the experiment timed out (can of course be prolonged to possibly get a better result) and the best model was built with a VotingEnsemble algorithm and an AUC_weighted of 92.5%. 
-![](images/run_complete.png)
+![](images/automl-1.png)
 The parameters from the best run were: 
-![](images/params.png)
+![](images/automl-2.png)
 Other metrics for the best run: 
 ![](images/metrics.png)
 
@@ -117,26 +134,44 @@ I defined a maximum of 10 runs and 5 concurrent runs. My primary metric (that I 
 
 ### Results
 I submitted the job with an AUC_weighted of roughly above 82%. 
-![](images/hyperdrive_run.png)
+![](images/hdrun-1.png)
+![](images/hdrun-2.png)
 The 10 runs couldn't result in a better model and the AUC_weighted stayed nearly the same. 
 ![](images/hd_results.png)
-The best run with id HD_14476565-ccef-423f-87bd-35f019d3782d_8 had the following arguments: 'arguments': ['--C', '10', '--max_iter', '100', '--solver', 'liblinear'].
+The best run had the following arguments: 'arguments': ['--C', '10', '--max_iter', '100', '--solver', 'liblinear'].
 
 Using more iterations, we might have had a better result. Howver, I don't think that it would reach the level of AutoML. 
 
 
 ## Model Deployment
 Thus it was clear that I will deploy the better performing AutoML VotingEnsemble model with >92% AUC_weighted and an accuracy >94%. 
-For that, I used the model in pickle format (.pkl) and registered it as a model. I added a scoring.py script that initialized and runs my model. The idea is taken from an [Azure example](https://github.com/Azure/MachineLearningNotebooks/blob/master/how-to-use-azureml/deployment/deploy-to-cloud/model-register-and-deploy.ipynb). The endpoint is hosted on Azure Container Instances (ACI) and I used 1 CPU core with 1 GB memory. 
+The workflow to deploy a machine learning model to Azure is: 
+1. Register the model
+2. Define an entry script
+3. Define an inference configuration
+4. Define a deployment configuration
+5. Deploy the model
+
+For that, I used the model in pickle format (.pkl) and *registered* it as a model. In my case, AutoML generated the model as output from the run so I simply had to state the path to it in my *entry script* called 'scoring.py'. This script will initialize and run my model - it receives data submitted to a deployed web service and passes it to the model. It then returns the model's response to the client. 
+This file is then being used in the *InferenceConfig*. The inference configuration specifies that the machine learning deployment will use the entry file to process incoming requests and that it will use the Docker image with the Python packages specified in the project_environment environment. 
+Finally, a *deployment configuration* specifies the amount of memory and cores to reserve for the webservice in order to run, as well as configuration details of the underlying webservice. The endpoint is hosted on Azure Container Instances (ACI) and I used 1 CPU core with 1 GB memory. 
+
 Endpoint is healthy: 
 ![](images/health.png) 
 I did successfully test my endpoint as shown in the following screenshot: 
 ![](images/test.png) 
+The model endpoint is a REST endpoint and the content can be queried using a POST request with data in JSON format. An example can be seen in the video below. 
 
 ## Screen Recording
 Please see everything in action using the following link: 
 https://youtu.be/0lOsqToui3I 
 
+## Future Improvements
+As previously mentioned, Azure AutoML (and myself) detected that a class imbalance and does make sense to prepare the dataset before running further experiments. Techniques on how to deal with an inbalanced dataset are: undersampling (select only some samples from the majority class), oversampling (replicate data from the minority class), generate synthetic dataset (e.g. using SMOTE or K-nearest-neighbour). 
+
+In HyperDrive: the hyperparamter optimization can be done in a more exhaustive (and possibly rewarding) way in a sense that a different Sampling method could be used.
+
+In AutoML: with AutoML, we can increase the number of iteration allowing us to go through more classification models supported by AutoML.
 
 ## Standout Suggestions
 - Leverage the model explanation feature: I was happy to see that Azure does provide an explanation on why a model was perfroming best in a stack of different AutoML models for a given problem. The tab "Explanation" gives interesting insight such as the performance of the model by the distribution of the prediction values as a box-whisker-plot
