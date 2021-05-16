@@ -18,7 +18,7 @@ df = TabularDatasetFactory.from_delimited_files(path=url)
 
 def clean_data(data):
     #clean data and convert categorical to indicator variables 
-    x_df = data.dropna()
+    x_df = data.to_pandas_dataframe().dropna()
     x_df.reset_index(drop=True, inplace=True)
     x_df.drop(['state', 'account_length', 'area_code'], axis = 1, inplace=True)
     x_df['international_plan'] = x_df.international_plan.apply(lambda s: 1 if s == "yes" else 0)
